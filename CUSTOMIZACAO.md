@@ -4,8 +4,8 @@ Estudo feito sobre o pacote 9.1.3, só com leitura estática. Nada aqui foi test
 
 **Estado em 26/10/2026:**
 - O empacotador `scripts/lgu_pack.py` está testado: reempacotar a 9.1.3 sem mudanças devolve o mesmo SHA-256 do original.
-- Existe um `.lgu` lite gerado e verificado no PC.
-- Falta saber a versão de software do carro antes de qualquer instalação (ver [Antes de ir para o carro](#antes-de-ir-para-o-carro)).
+- O pacote lite (9.1.3.1) e o pacote de volta (9.1.3.2) estão gerados e verificados no PC.
+- O carro está na **5.2.7.A**. O plano é subir primeiro para a 9.1.3 oficial e só depois aplicar o lite (ver [Plano de instalação](#plano-de-instalação)).
 
 ## O que esperar
 
@@ -142,39 +142,59 @@ Testes de 26/10/2026:
 | 9.1.3 sem mudanças | SHA-256 `090FFAEF…B568` igual ao original, 9 s |
 | Trocar o `nngnavi.exe` (14,7 MB) por ele mesmo e adicionar um arquivo novo | Decodifica, `testzip` sem erro, conteúdo igual byte a byte |
 | Remover `NK.bin` | Recusado |
-| Lite (`lite/mudancas.txt`) | 6845 entradas. As 40 removidas somam 26 MB e só o `SYS.TXT` difere do original. Decodifica e passa no `testzip` |
+| Lite (`lite/mudancas.txt`) | 6845 entradas. As 40 removidas somam 26 MB. Só o `SYS.TXT` e o `Version_Info.txt` diferem do original, iguais aos de `lite/`. Decodifica e passa no `testzip` |
+| Volta (`lite/volta/mudancas.txt`) | Original inteiro, só com o `Version_Info.txt` trocado |
 
-O lite fica fora do repo, em `C:\Dev\medianav-sandero2016\custom\lite-9.1.3\upgrade.lgu`:
+Os pacotes ficam fora do repo, em `C:\Dev\medianav-sandero2016\custom\`, cada um com um `SHA256.txt` ao lado:
 
-```
-48D5797C5B7BA6382B705C3D12FBD247EB8A6D09CA691A46BC637DB1AA290B37  204.254.318 bytes
-```
+| Pacote | Versão declarada | SHA-256 | Bytes |
+|---|---|---|---|
+| `lite-9.1.3.1\upgrade.lgu` | 9.1.3.1 | `81E23131FABD34A9915C21A2E3FC045C3B565D3C73AE3D86D7C28108C82850CC` | 204.254.320 |
+| `volta-9.1.3.2\upgrade.lgu` | 9.1.3.2 | `E2D17030EAD5997E968C6513E46BD38C0F352DDDDE3C3B3E2B5E92066BCB3E26` | 222.387.533 |
 
-## Antes de ir para o carro
+Na verificação de 26/10/2026, um arquivo da extração de referência apareceu com um bit trocado no disco do PC. O ZIP e os pacotes estavam íntegros. Por isso, depois de copiar qualquer pacote para o pendrive, confira o hash **no pendrive**: `Get-FileHash E:\upgrade.lgu`.
 
-1. **A versão do carro decide se o lite instala.** O lite declara 9.1.3 no `Version_Info.txt`. O UpgradeManager compara a versão nova com a atual e tem caminhos para "mesma versão" e "versão antiga". Pelo relato da EvoTech, um carro que já está na 9.1.3 recusa outro 9.1.3.
-   - Subir o número (por exemplo `9.1.3.1`) resolve a entrada. O custo: depois disso a 9.1.3 oficial passa a ser "versão antiga" e deixa de servir como volta atrás.
-   - **Preciso da versão atual do carro antes de mexer nisso.**
-2. **Com o carro abaixo da 9.1.3**, o lite instala como atualização normal. Ele leva a central para a 9.1.3 com o `SYS.TXT` alterado. Essa parte já não é só configuração: atualiza o sistema inteiro.
-3. **Para conferir antes e depois**, use os códigos de serviço digitados após tocar 5 pontos em Configurações > Sistema > Versão:
-   - `1111` mostra a versão.
-   - `0362` liga o modo de teste.
-   - Esses códigos vêm de relato para a MediaNav 1 e não estão confirmados no Evolution.
-4. **Na instalação:**
-   - Pendrive FAT32 com o `upgrade.lgu` na raiz.
-   - Motor ligado do começo ao fim.
-   - Nada de engatar a ré nem desligar o carro durante a gravação.
-   - As fases de kernel e MICOM não conferem o que gravaram.
+## Plano de instalação
+
+O carro está na 5.2.7.A. Na v1 não existe volta para versão anterior: depois da 9.1.3, a 5.2.7 não reinstala. A Menaco e a EvoTech partem do mesmo caminho (5.2.7 até 9.1.3).
+
+### Etapa 1: 9.1.3 oficial, sem modificação
+
+Esta etapa grava kernel, MICOM e bootloader. Por isso ela usa só arquivo da Renault.
+
+1. **Pelo Toolbox (preferido):**
+   - Pendrive FAT32 de 8 GB ou mais, vazio.
+   - No carro, com a navegação aberta, procure no menu a atualização de mapas e a opção de salvar os dados da central no pendrive.
+   - No PC, abra o Toolbox (https://renault.welcome.naviextras.com) com esse pendrive.
+   - Se ele oferecer a 9.1.3 para o seu carro, isso confirma que a Renault distribui essa versão para o Sandero brasileiro.
+2. **Se o Toolbox não oferecer**, a alternativa é o `upgrade.lgu` 9.1.3 que estudei (`090FFAEF…B568`). Antes de usá-lo, me avise. Ele veio de site de terceiros, e sem a oferta do Toolbox falta a confirmação de que vale para o seu SKU.
+3. **Na instalação:**
+   - Coloque o `upgrade.lgu` na raiz do pendrive e confira o hash no pendrive.
+   - Motor ligado do começo ao fim. Um relato fala em 2h30 de instalação.
+   - Não engate a ré, não desligue o carro e não tire o pendrive até a central reiniciar e mostrar a versão nova.
+   - Anote antes as estações de rádio e os telefones pareados, que podem se perder.
+4. Depois de instalar, confira se a tela de versão mostra 9.1.3. Use o carro alguns dias: câmera de ré, Bluetooth, som, GPS.
+
+### Etapa 2: lite 9.1.3.1
+
+1. Só com a central já na 9.1.3 e funcionando bem.
+2. Pendrive com o `lite-9.1.3.1\upgrade.lgu` na raiz, com o hash conferido no pendrive.
+3. Mesmos cuidados da etapa 1. Os arquivos de kernel e MICOM do lite são os mesmos da 9.1.3 oficial, mas a central pode regravá-los.
+4. Para medir o ganho, o ideal é ligar o `show_fps` do iGO antes e depois. Ainda falta descobrir em que seção do `SYS.TXT` essa chave entra.
+
+### Para conferir sem mexer
+
+Os códigos de serviço (tocar 5 pontos em Configurações > Sistema > Versão e digitar `1111` para versão ou `0362` para modo de teste) vêm de relato para a MediaNav 1. Não estão confirmados no Evolution, então deixe-os para depois.
 
 ## Como voltar atrás
 
-- **Ajuste do iGO:** o `SYS.TXT` original tem duas linhas:
+- **Do lite para a 9.1.3 de fábrica:** instale o `volta-9.1.3.2\upgrade.lgu`. É a 9.1.3 original inteira, com o `SYS.TXT` de duas linhas:
   ```
   [device]
   type="lge_ulc"
   ```
-  Reinstalar a 9.1.3 original volta esse arquivo, porque o updater troca o `sys.txt` quando o pacote traz um.
-- **Se a versão foi subida no item 1**, a 9.1.3 oficial deixa de instalar. A volta passa a exigir um pacote com versão ainda maior, gerado pelo mesmo empacotador a partir do original.
+  O número 9.1.3.2 existe só para a central aceitar o pacote por cima da 9.1.3.1. Os idiomas, vozes e POIs que o lite deixou de fora continuam gravados na central.
+- **Da 9.1.3 para a 5.2.7:** não existe caminho conhecido.
 
 ## Achados paralelos
 

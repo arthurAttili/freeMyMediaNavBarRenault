@@ -1,10 +1,14 @@
 # Variante lite do 9.1.3 para Sandero brasileiro. Uso:
 #   python -I scripts\lgu_pack.py <9.1.3>\upgrade.lgu <saida>\upgrade.lgu lite\mudancas.txt
-# Mexe só em Storage Card4\NNG (iGO). NK.bin, firmware.hex, bootloader, DAB e Storage Card\System ficam como vieram.
+# Instalar só numa central que já está na 9.1.3 oficial (etapa 2 do CUSTOMIZACAO.md).
+# Mexe em Storage Card4\NNG (iGO) e no Version_Info.txt. NK.bin, firmware.hex, bootloader e DAB ficam como vieram.
 # O updater sobrescreve arquivos e não apaga a partição: o que sai daqui some do pacote, não da central.
 
 # Configuração do iGO: corta o desenho de prédios 3D e usa shaders simples
 replace upgrade/Storage Card4/NNG/SYS.TXT | SYS.TXT
+
+# Versão 9.1.3.1: a central recusa reinstalar a mesma versão. Depois disso a 9.1.3 oficial passa a ser versão antiga.
+replace upgrade/Storage Card/System/Version_Info.txt | Version_Info.txt
 
 # Idiomas da navegação: ficam Portuguese-bra, Portuguese, Spanish e English-uk
 remove upgrade/Storage Card4/NNG/content/lang/Lang_Arabic.zip

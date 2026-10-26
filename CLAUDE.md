@@ -13,6 +13,7 @@ Estudo do Media Nav Evolution v1 (LG ULC2, WinCE 6.0, MIPS Au13xx) do Sandero 20
 ## Onde estão os dados
 
 - Pacote 9.1.3 e extração: `C:\Dev\medianav-sandero2016\` (`firmware\9.1.3\upgrade.lgu`, `extract\9.1.3\root\upgrade\`).
+- Carro do Arthur em 26/10/2026: software **5.2.7.A**, skin Renault, com GPS. Abaixo da 9.1.3, e a v1 não volta de versão.
 - SHA-256 do `upgrade.lgu` analisado: `090FFAEF5C4047A1BCD6C9A0114C4E8569E63513A11088C532C5B0F609AEB568`.
 
 ## Armadilhas
