@@ -180,7 +180,8 @@ Esta etapa grava kernel, MICOM e bootloader. Por isso ela usa só arquivo da Ren
 1. Só com a central já na 9.1.3 e funcionando bem.
 2. Pendrive com o `lite-9.1.3.1\upgrade.lgu` na raiz, com o hash conferido no pendrive.
 3. Mesmos cuidados da etapa 1. Os arquivos de kernel e MICOM do lite são os mesmos da 9.1.3 oficial, mas a central pode regravá-los.
-4. Para medir o ganho, o ideal é ligar o `show_fps` do iGO antes e depois. Ainda falta descobrir em que seção do `SYS.TXT` essa chave entra.
+4. **Pendência antes desta etapa:** o Toolbox grava `update_checksum.md5` ao lado do `upgrade.lgu`, e o UpgradeManager lê esse arquivo. No pendrive de 26/10/2026, o valor (`A4B42A91…78A6`) não é o MD5 do arquivo inteiro, do corpo, do cabeçalho nem do ZIP decodificado. Falta descobrir no UpgradeManager o que ele cobre e o que acontece quando o arquivo está ausente. Um pacote modificado ao lado do `.md5` do original provavelmente seria recusado.
+5. Para medir o ganho, o ideal é ligar o `show_fps` do iGO antes e depois. Ainda falta descobrir em que seção do `SYS.TXT` essa chave entra.
 
 ### Para conferir sem mexer
 
