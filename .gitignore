@@ -1,0 +1,13 @@
+# Binários da LG/Renault: código proprietário, não redistribuir
+*.lgu
+*.bin
+*.hex
+*.zip
+firmware/
+extract/
+
+# Arquivo de terceiro (MediaNavMods), baixar à parte
+scripts/xorArray.h
+
+__pycache__/
+*.log
