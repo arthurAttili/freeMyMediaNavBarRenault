@@ -1,0 +1,53 @@
+# Variante lite do 9.1.3 para Sandero brasileiro. Uso:
+#   python -I scripts\lgu_pack.py <9.1.3>\upgrade.lgu <saida>\upgrade.lgu lite\mudancas.txt
+# Mexe só em Storage Card4\NNG (iGO). NK.bin, firmware.hex, bootloader, DAB e Storage Card\System ficam como vieram.
+# O updater sobrescreve arquivos e não apaga a partição: o que sai daqui some do pacote, não da central.
+
+# Configuração do iGO: corta o desenho de prédios 3D e usa shaders simples
+replace upgrade/Storage Card4/NNG/SYS.TXT | SYS.TXT
+
+# Idiomas da navegação: ficam Portuguese-bra, Portuguese, Spanish e English-uk
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Arabic.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Bulgarian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Croatian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Czech.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Danish.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Dutch-nl.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_English-aus.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Finnish.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_French.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_German.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Greek.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Hebrew.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Hindi.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Hungarian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Indonesian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Italian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Kazakh.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Norwegian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Persian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Polish.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Romanian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Russian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Serbian-cyrillic.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Slovak.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Slovenian.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Swedish.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Turkish.zip
+remove upgrade/Storage Card4/NNG/content/lang/Lang_Ukrainian.zip
+
+# Vozes TTS de cazaque e persa (as únicas vozes do pacote)
+remove upgrade/Storage Card4/NNG/content/voice/Voice_Kaz-*
+remove upgrade/Storage Card4/NNG/content/voice/Voice_Per-*
+
+# Concessionárias de outras marcas (fica RenaultDealers)
+remove upgrade/Storage Card4/NNG/content/userdata/POI/AvtovazDealers.zip
+remove upgrade/Storage Card4/NNG/content/userdata/POI/DaciaDealers.zip
+remove upgrade/Storage Card4/NNG/content/userdata/POI/FiatDealers.zip
+remove upgrade/Storage Card4/NNG/content/userdata/POI/NissanDealers.zip
+remove upgrade/Storage Card4/NNG/content/userdata/POI/OpelDealers.zip
+remove upgrade/Storage Card4/NNG/content/userdata/POI/RenaultTrucksDealers.zip
+remove upgrade/Storage Card4/NNG/content/userdata/POI/VauxhallDealers.zip
+
+# Fontes do híndi (plugin india)
+remove upgrade/Storage Card4/NNG/ux/india.zip

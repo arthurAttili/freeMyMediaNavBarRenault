@@ -21,4 +21,7 @@ Estudo do Media Nav Evolution v1 (LG ULC2, WinCE 6.0, MIPS Au13xx) do Sandero 20
 - O CRC-32 em 0x18 é do corpo, sem o cabeçalho.
 - O 9.1.3 é o mesmo para todas as regiões. A central escolhe a variante (`_weu`, `_eeu`, `_amr`, `_oth`) pelo SKU gravado no MCU.
 - Android Auto e CarPlay não existem na v1. Isso já foi verificado no código; não reabrir sem dado novo.
+- O `upgrade.lgu` sobrescreve arquivos e não apaga a partição: tirar entrada do pacote só encolhe o pacote. Ver `CUSTOMIZACAO.md`.
+- A central compara a versão do `Version_Info.txt` com a instalada e recusa a mesma versão. Qualquer passo de instalação depende da versão atual do carro: perguntar ao Arthur antes.
+- `scripts/lgu_pack.py` sem mudanças tem que reproduzir o SHA-256 do original. Se mexer no script, refazer esse teste.
 - No Windows, `print` de texto UTF-16 quebra no console cp1252. Use `sys.stdout.reconfigure(encoding="utf-8")`. Com `-I` o Python ignora `PYTHONIOENCODING`.

@@ -4,6 +4,8 @@ Estudo do Media Nav Evolution v1 (LG, Windows CE 6), a central multimídia do Sa
 
 O resultado está em [RELATORIO.md](RELATORIO.md): versões, formato do `upgrade.lgu`, como a central valida a atualização, o que dá para personalizar e por que Android Auto não roda nessa geração.
 
+O plano de customização está em [CUSTOMIZACAO.md](CUSTOMIZACAO.md): o que dá para tirar e ajustar, o ganho esperado, o risco de cada item e como voltar atrás. A pasta `lite/` tem a lista de mudanças de um pacote enxuto, que o `lgu_pack.py` aplica sobre o original.
+
 ## O que não está aqui
 
 O firmware é da LG e da Renault, então o repositório não traz nenhum binário dele. Para refazer a análise:
@@ -31,7 +33,12 @@ python -I scripts\survey.py <saida>\root
 python -I scripts\components.py <saida>\root\upgrade
 python -I scripts\strgrep.py <saida>\root\upgrade "<regex>" "Storage Card\System\UpgradeManager.exe"
 python -I scripts\nngcfg.py "<saida>\root\upgrade\Storage Card4\NNG"
+python -I scripts\zipstruct.py <saida>\_decoded.zip
+python -I scripts\nkrom.py "<saida>\root\upgrade\Storage Card\NK.bin"
+python -I scripts\lgu_pack.py <caminho>\upgrade.lgu <outra_pasta>\upgrade.lgu lite\mudancas.txt
 ```
+
+O `lgu_pack.py` sem lista de mudanças tem que gerar um arquivo idêntico ao original: é o teste do empacotador. Ele recusa mexer em `NK.bin`, `firmware.hex`, bootloader e firmware do DAB, e recusa gravar em unidade removível.
 
 ## Aviso
 
