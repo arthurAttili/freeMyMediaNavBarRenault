@@ -36,7 +36,10 @@ python -I scripts\nngcfg.py "<saida>\root\upgrade\Storage Card4\NNG"
 python -I scripts\zipstruct.py <saida>\_decoded.zip
 python -I scripts\nkrom.py "<saida>\root\upgrade\Storage Card\NK.bin"
 python -I scripts\lgu_pack.py <caminho>\upgrade.lgu <outra_pasta>\upgrade.lgu lite\mudancas.txt
+python -I scripts\simulador_gera.py <saida>\root\upgrade <pasta_do_simulador>
 ```
+
+O `simulador_gera.py` monta uma página local com as telas do AppMain para testar mudanças visuais no PC. Precisa de `pefile`, `capstone` e `pillow`. A pasta gerada tem imagens da LG/Renault e fica fora do repo. Ver `SIMULADOR.md`.
 
 O `lgu_pack.py` sem lista de mudanças tem que gerar um arquivo idêntico ao original: é o teste do empacotador. Ele recusa mexer em `NK.bin`, `firmware.hex`, bootloader e firmware do DAB, e recusa gravar em unidade removível.
 

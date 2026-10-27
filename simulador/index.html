@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador Media Nav</title>
+<!-- Template do simulador. O simulador_gera.py copia este arquivo para a pasta de saída,
+     ao lado do data.js e das imagens extraídas. Sem o data.js a página fica vazia. -->
+<style>
+:root {
+  --bg: #f3f3f1; --panel: #ffffff; --line: #d9d9d4; --text: #1d1d1b; --muted: #6b6b66;
+  --accent: #c8632a; --accent-soft: #f6e1d3; --ok: #2f7d4f; --warn: #a8670b; --bad: #b3362d;
+  --stage: #000;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --panel: #1f1f1d; --line: #33332f; --text: #ecece8; --muted: #9a9a93;
+    --accent: #ee8d49; --accent-soft: #3a2a1e; --ok: #5fbf85; --warn: #e0a23b; --bad: #e06a5f;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --panel: #1f1f1d; --line: #33332f; --text: #ecece8; --muted: #9a9a93;
+  --accent: #ee8d49; --accent-soft: #3a2a1e; --ok: #5fbf85; --warn: #e0a23b; --bad: #e06a5f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+button, select, input { font: inherit; color: inherit; }
+button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+select, input[type=text], input[type=number] { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+
+.app { display: grid; grid-template-columns: 240px 1fr 320px; grid-template-rows: auto 1fr; height: 100vh; }
+header { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header h1 { font-size: 15px; margin: 0 12px 0 0; }
+header .sp { flex: 1; }
+header label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+
+nav.telas { overflow: auto; border-right: 1px solid var(--line); padding: 8px; }
+nav.telas input { width: 100%; margin-bottom: 8px; }
+nav.telas h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 12px 4px 4px; }
+nav.telas a { display: block; padding: 4px 6px; border-radius: 5px; color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+nav.telas a:hover { background: var(--accent-soft); }
+nav.telas a.sel { background: var(--accent); color: #fff; }
+nav.telas a small { color: var(--muted); }
+nav.telas a.sel small { color: #fff; }
+
+main { overflow: auto; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wrap { width: 100%; max-width: 1200px; }
+.stagebox { position: relative; width: 100%; aspect-ratio: 800 / 480; background: var(--stage); border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 10px #111, 0 6px 30px rgba(0,0,0,.35); }
+#stage { position: absolute; left: 0; top: 0; width: 800px; height: 480px; transform-origin: 0 0; background-repeat: no-repeat; user-select: none; }
+.w { position: absolute; background-repeat: no-repeat; }
+.w .lbl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; text-align: center; padding: 0 6px; line-height: 1.05; pointer-events: none; text-shadow: 0 1px 1px rgba(0,0,0,.6); }
+.w.tile .lbl { align-items: flex-end; padding-bottom: 12px; }
+.w.texto .lbl { justify-content: flex-start; }
+.inv .w .lbl { color: #1d1d1b; text-shadow: none; }   /* suposição: a cor real vem do código */
+.w .lbl.dyn { color: rgba(255,255,255,.35); font-style: italic; }
+.insp .w { outline: 1px dashed rgba(0,255,255,.45); cursor: move; }
+.insp .w.sel { outline: 2px solid #ee8d49; z-index: 999; }
+.insp .w.mod { outline-color: rgba(255,170,0,.9); }
+.w.var { opacity: .45; }
+.popdim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+.legend { font-size: 12px; color: var(--muted); }
+
+aside { overflow: auto; border-left: 1px solid var(--line); padding: 12px; }
+aside h2 { font-size: 13px; margin: 0 0 8px; }
+aside section { margin-bottom: 18px; }
+.kv { display: grid; grid-template-columns: 70px 1fr; gap: 4px 8px; font-size: 12px; }
+.kv b { color: var(--muted); font-weight: 500; }
+.kv code { word-break: break-all; }
+.rect { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 6px 0; }
+.rect input { width: 100%; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 10px; border: 1px solid currentColor; }
+.t-baixo { color: var(--ok); } .t-medio { color: var(--warn); } .t-alto { color: var(--bad); }
+.chg { font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.chg button { padding: 1px 6px; font-size: 11px; float: right; }
+.empty { color: var(--muted); font-size: 12px; }
+textarea { width: 100%; min-height: 48px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+.warn { color: var(--warn); font-size: 12px; }
+
+/* navegação iGO (mock) */
+.nav { position: absolute; inset: 0; background: #2b3a2e; overflow: hidden; font-family: system-ui, sans-serif; color: #fff; }
+.nav svg { position: absolute; inset: 0; }
+.nav .man { position: absolute; left: 0; top: 0; width: 230px; height: 120px; background: rgba(20,20,20,.85); padding: 10px 14px; }
+.nav .man .d { font-size: 40px; font-weight: 700; }
+.nav .man .s { font-size: 15px; opacity: .85; }
+.nav .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: rgba(15,15,15,.9); display: flex; }
+.nav .bar div { flex: 1; border-right: 1px solid #333; padding: 6px 10px; }
+.nav .bar small { display: block; font-size: 12px; opacity: .6; }
+.nav .bar b { font-size: 22px; }
+.nav .side { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.nav .side div { background: rgba(15,15,15,.85); padding: 4px 10px; border-radius: 4px; font-size: 16px; }
+.nav .street { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); background: rgba(15,15,15,.85); padding: 4px 14px; border-radius: 4px; font-size: 17px; }
+.nav .lim { width: 54px; height: 54px; border-radius: 50%; border: 6px solid #d22; background: #fff; color: #000; display: grid; place-items: center; font-weight: 800; font-size: 18px; }
+.navopts label { display: flex; gap: 6px; font-size: 12px; margin: 3px 0; }
+.navopts code { color: var(--muted); font-size: 11px; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; height: auto; }
+  nav.telas { max-height: 200px; border-right: 0; border-bottom: 1px solid var(--line); }
+  aside { border-left: 0; border-top: 1px solid var(--line); }
+  main { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Media Nav 9.1.3 · simulador</h1>
+    <label>Tema <select id="tema"></select></label>
+    <button id="bInsp" title="Clique seleciona, arrastar move">Inspecionar</button>
+    <label><input type="checkbox" id="cVar"> ramos alternativos</label>
+    <span class="sp"></span>
+    <button id="bExp">Exportar mudanças</button>
+    <button id="bZera">Desfazer tudo</button>
+  </header>
+
+  <nav class="telas">
+    <input type="text" id="busca" placeholder="Buscar tela ou texto">
+    <div id="lista"></div>
+  </nav>
+
+  <main>
+    <div class="wrap">
+      <div class="stagebox" id="box"><div id="stage"></div></div>
+    </div>
+    <div class="legend" id="legenda"></div>
+  </main>
+
+  <aside>
+    <section id="painel"></section>
+    <section>
+      <h2>Mudanças <span id="nChg" class="legend"></span></h2>
+      <div id="chgs"></div>
+    </section>
+  </aside>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const D = window.SIM || { temas: ["M1"], telas: [], imgs: {}, fundos: {}, textos: {} };
+const $ = s => document.querySelector(s);
+const NAV = "nav";
+
+// Para onde cada toque leva. Imagem na tela inicial e texto do softkey.
+const LINK_IMG = { 84: "0x9b1c0", 85: "0x47a70", 86: "0x4e96c", 90: NAV, 91: NAV, 92: "0xbd320" };
+const LINK_STR = { 1100: "0x9b1c0", 1102: "0x993a0", 1411: "0xad504", 1412: "0xb1378", 1413: "0xaf074",
+                   1414: "0xbd320", 1449: "0xbf9a0", 3200: "0xc5ba8" };
+// Conteúdo de exemplo para áreas de texto que o AppMain preenche em tempo de execução.
+const AMOSTRA = {
+  "0x9b1c0|212,90,375,70": "87.5", "0x9b1c0|307,176,200,35": "Rádio Exemplo", "0x9b1c0|0,333,800,40": "RDS: texto de exemplo",
+  "0x9b1c0|307,222,130,60": "FM", "0x9b1c0|448,230,30,25": "1",
+};
+
+// Viabilidade de cada tipo de mudança (ver SIMULADOR.md)
+const VIAB = {
+  img:   { r: "baixo", t: "Troca do BMP na pasta Img do tema. Mesmo tamanho e formato (8 bits paletado)." },
+  texto: { r: "medio", t: "Patch na tabela de textos do LangDllPTBR.dll. Texto maior pode ser cortado." },
+  rect:  { r: "alto",  t: "Patch de imediato no AppMain.exe (endereços abaixo). Mexe no executável." },
+  hide:  { r: "baixo", t: "BMP todo na cor-chave amarela some da tela. O toque continua ativo." },
+  nav:   { r: "medio", t: "Edição do .ui da skin do iGO dentro do zip em Storage Card4/NNG/ux." },
+};
+const NAV_CAMPOS = [
+  ["vel", "Velocidade atual", "%navigation.car.current_speed", "62 km/h"],
+  ["lim", "Limite / radar", "speedcam", "60"],
+  ["eta", "Hora de chegada", "%navigation.eta_at_destination", "18:42"],
+  ["tempo", "Tempo restante", "%navigation.time_to_destination", "0:23"],
+  ["dist", "Distância restante", "%navigation.distance_to_destination", "14,2 km"],
+  ["alt", "Altitude", "%gps.elevation", "812 m"],
+  ["rumo", "Rumo", "%navigation.car.heading", "NE"],
+  ["temp", "Temperatura externa", "%other.lg_renault.temperature_value", "24 °C"],
+  ["midia", "Música tocando", "%other.lg_renault.media_string", "♪ Faixa 03"],
+  ["gsm", "Sinal do celular / bateria", "%other.lg_renault.gsm_signal", "▂▄▆ 80%"],
+  ["rua", "Rua atual", "%navigation.car.current_street_with_shield", "Av. Paulista"],
+  ["hora", "Relógio", "%gps.current_time", "18:19"],
+];
+const NAV_PADRAO = { vel: 1, eta: 1, dist: 1, rua: 1 };   // o que a skin Renault mostra hoje (aprox.)
+
+const st = { tema: "M1", tela: "0x226a4", insp: false, sel: null, vars: false,
+             ed: {}, txt: {}, nav: Object.assign({}, NAV_PADRAO), navMod: false };
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem("mnsim") || "null"); } catch (e) { return null; } },
+  set() { try { localStorage.setItem("mnsim", JSON.stringify({ ed: st.ed, txt: st.txt, nav: st.nav, navMod: st.navMod, tema: st.tema })); } catch (e) {} },
+};
+const salvo = store.get();
+if (salvo) Object.assign(st, salvo);
+
+const telaPor = Object.fromEntries(D.telas.map(t => [t.fn, t]));
+const texto = id => (id in st.txt ? st.txt[id] : D.textos[id]);
+const urlImg = nome => { const i = D.imgs[nome]; if (!i) return null; return i.arq[st.tema] || i.arq.M1 || Object.values(i.arq)[0]; };
+const tam = nome => { const i = D.imgs[nome]; return i && (i.tam[st.tema] || i.tam.M1 || Object.values(i.tam)[0]); };
+const estados = w => { const t = tam(w.nome), k = t ? t[0] / w.rect[2] : 1; return Number.isInteger(k) && k > 0 ? k : 1; };
+// O AppMain cria widgets diferentes por tema (ex.: "Escuro" do Dacia tem 144 px, o do Renault 104 px).
+// De cada grupo de ramos fica o que encaixa no sprite do tema ativo.
+function escolhidos(t) {
+  const grupos = {}, ok = new Set();
+  for (const w of t.widgets) (grupos[w.var_de || w.id] = grupos[w.var_de || w.id] || []).push(w);
+  for (const g of Object.values(grupos)) {
+    const nota = w => { const s = tam(w.nome); if (!s) return 0; return (s[0] % w.rect[2] === 0 ? 2 : 0) + (s[1] === w.rect[3] ? 1 : 0); };
+    ok.add(g.reduce((a, b) => (nota(b) > nota(a) ? b : a)).id);
+  }
+  return ok;
+}
+const ed = w => st.ed[w.id] || {};
+const setEd = (w, patch) => { st.ed[w.id] = Object.assign({}, st.ed[w.id], patch); store.set(); };
+
+function escala() {
+  const box = $("#box");
+  $("#stage").style.transform = `scale(${box.clientWidth / 800})`;
+}
+addEventListener("resize", escala);
+
+function lista() {
+  const q = $("#busca").value.trim().toLowerCase();
+  const grupos = {};
+  const telas = [{ fn: NAV, nome: "Navegação (iGO, mock)", grupo: "Navegação" }].concat(D.telas);
+  for (const t of telas) {
+    const pal = (t.nome + " " + (t.widgets || []).map(w => w.str ? D.textos[w.str] : "").join(" ")).toLowerCase();
+    if (q && !pal.includes(q)) continue;
+    (grupos[t.grupo] = grupos[t.grupo] || []).push(t);
+  }
+  const ordem = ["Início", "Rádio", "Mídia", "Telefone", "Navegação", "Configurações", "Driving Eco", "Pop-ups", "Outras"];
+  $("#lista").innerHTML = ordem.filter(g => grupos[g]).map(g => `<h3>${g}</h3>` + grupos[g].map(t =>
+    `<a data-fn="${t.fn}" class="${t.fn === st.tela ? "sel" : ""}">${esc(t.nome)} ${t.conferida === false ? `<small>${t.fn}</small>` : ""}</a>`).join("")).join("");
+}
+$("#lista").addEventListener("click", e => { const a = e.target.closest("a"); if (a) ir(a.dataset.fn); });
+$("#busca").addEventListener("input", lista);
+
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+
+function ir(fn) { st.tela = fn; try { history.replaceState(null, "", "#" + fn); } catch (e) {} st.sel = null; desenha(); lista(); painel(); }
+
+function desenha() {
+  const stage = $("#stage");
+  stage.innerHTML = "";
+  stage.className = (st.insp ? "insp" : "") + (st.tema === "M1_INV" ? " inv" : "");
+  if (st.tela === NAV) { desenhaNav(stage); legenda(); return; }
+  const t = telaPor[st.tela];
+  if (!t) return;
+  const f = (D.fundos[st.tema] || D.fundos.M1 || {})[t.fundo];
+  stage.style.backgroundImage = f ? `url("${f}")` : "none";
+  if (t.pasta === "popup") stage.appendChild(Object.assign(document.createElement("div"), { className: "popdim" }));
+  const ok = escolhidos(t);
+  for (const w of t.widgets) {
+    const e = ed(w);
+    w.variante = !ok.has(w.id);
+    if (w.variante && !st.vars && !e.mostra) continue;
+    const [x, y, ww, hh] = e.rect || w.rect;
+    const d = document.createElement("div");
+    d.className = "w " + w.tipo + (w.variante ? " var" : "") + (st.sel === w.id ? " sel" : "") + (Object.keys(e).length ? " mod" : "");
+    if (t.fn === "0x226a4" && hh > 100) d.classList.add("tile");
+    Object.assign(d.style, { left: x + "px", top: y + "px", width: ww + "px", height: hh + "px" });
+    d.dataset.id = w.id;
+    const im = tam(w.nome);
+    const url = e.hide ? null : (e.imgData || urlImg(w.nome));
+    if (url && im) {
+      d.style.backgroundImage = `url("${url}")`;
+      d.style.backgroundSize = `${im[0]}px ${im[1]}px`;
+      d.style.backgroundPosition = "0 0";
+    }
+    const s = w.str != null ? texto(w.str) : null;
+    const am = AMOSTRA[`${t.fn}|${w.rect.join(",")}`];
+    if (s || am || (st.insp && w.tipo.startsWith("texto"))) {
+      const l = document.createElement("span");
+      l.className = "lbl" + (s || am ? "" : " dyn");
+      l.textContent = s || am || "texto dinâmico";
+      l.style.fontSize = Math.max(11, Math.min(hh * (d.classList.contains("tile") ? 0.17 : w.tipo.startsWith("texto") ? 0.55 : 0.42), 30)) + "px";
+      d.appendChild(l);
+    }
+    d._w = w;
+    stage.appendChild(d);
+  }
+  legenda();
+}
+
+function legenda() {
+  if (st.tela === NAV) { $("#legenda").textContent = "Mock da navegação: os campos à direita são os que a skin do iGO consegue mostrar."; return; }
+  const t = telaPor[st.tela];
+  const n = t.widgets.length, v = t.widgets.filter(w => w.variante).length;
+  $("#legenda").textContent = `${t.nome} · função ${t.fn} do AppMain · ${n} widgets (${v} de ramo alternativo) · fundo ${t.fundo}`;
+}
+
+// interação no palco
+let drag = null;
+$("#stage").addEventListener("pointerdown", e => {
+  const d = e.target.closest(".w");
+  if (!d) return;
+  const w = d._w;
+  if (st.insp) {
+    st.sel = w.id;
+    const r = (ed(w).rect || w.rect).slice();
+    drag = { w, r, x0: e.clientX, y0: e.clientY, k: $("#box").clientWidth / 800, d, moved: false };
+    d.setPointerCapture(e.pointerId);
+    document.querySelectorAll(".w.sel").forEach(n => n.classList.remove("sel"));
+    d.classList.add("sel");
+    painel();
+    return;
+  }
+  if (estados(w) > 1) d.style.backgroundPosition = `-${w.rect[2]}px 0`;   // estado 1 = pressionado
+  d.setPointerCapture(e.pointerId);
+  d.onpointerup = () => {
+    d.style.backgroundPosition = "0 0"; d.onpointerup = null;
+    const alvo = /softkey_home/.test(w.nome || "") ? "0x226a4" : (st.tela === "0x226a4" && LINK_IMG[w.img]) || LINK_STR[w.str];
+    if (alvo && alvo !== st.tela) ir(alvo);
+  };
+});
+$("#stage").addEventListener("pointermove", e => {
+  if (!drag) return;
+  const dx = Math.round((e.clientX - drag.x0) / drag.k), dy = Math.round((e.clientY - drag.y0) / drag.k);
+  if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+  drag.moved = true;
+  const r = [drag.r[0] + dx, drag.r[1] + dy, drag.r[2], drag.r[3]];
+  drag.d.style.left = r[0] + "px"; drag.d.style.top = r[1] + "px";
+  drag.novo = r;
+});
+$("#stage").addEventListener("pointerup", () => {
+  if (drag && drag.moved && drag.novo) { setEd(drag.w, { rect: drag.novo }); desenha(); painel(); mudancas(); }
+  drag = null;
+});
+
+function achaW(id) { for (const t of D.telas) for (const w of t.widgets) if (w.id === id) return [t, w]; return []; }
+
+function painel() {
+  const p = $("#painel");
+  if (st.tela === NAV) { painelNav(p); return; }
+  const [t, w] = st.sel ? achaW(st.sel) : [];
+  if (!w) {
+    p.innerHTML = `<h2>Widget</h2><p class="empty">${st.insp ? "Clique num elemento da tela." : "Ligue “Inspecionar” e clique num elemento para ver imagem, posição e texto, e para testar mudanças."}</p>`;
+    return;
+  }
+  const e = ed(w), t2 = tam(w.nome), im = t2 ? { w: t2[0], h: t2[1] } : {}, r = e.rect || w.rect;
+  const s = w.str != null ? w.str : null;
+  p.innerHTML = `<h2>${esc(w.tipo)} ${w.variante ? '<span class="tag t-medio">ramo alternativo</span>' : ""}</h2>
+  <div class="kv">
+    <b>imagem</b><code>${w.img >= 0 ? `#${w.img} ${esc(w.nome || "?")}` : "sem imagem"}</code>
+    ${im.w ? `<b>arquivo</b><span>${im.w}×${im.h} no tema ${st.tema}, ${estados(w)} estado(s)</span>` : ""}
+    <b>chamada</b><code>${w.at}</code>
+    <b>texto</b><span>${s != null ? `#${s}` : "(nenhum novo)"}</span>
+  </div>
+  <div class="rect">${["x", "y", "w", "h"].map((k, i) => `<input type="number" data-i="${i}" value="${r[i]}" title="${k}">`).join("")}</div>
+  ${e.rect ? `<p class="warn">Original ${w.rect.join(", ")}. Imediatos em ${w.rect_src.map(a => a || "?").join(", ")}.</p>` : ""}
+  ${s != null ? `<label class="legend">Texto #${s} (vale para todas as telas que usam esse id)</label><textarea id="eTxt">${esc(texto(s))}</textarea>` : ""}
+  <div class="row">
+    ${w.img >= 0 ? `<label><button id="bImg" type="button">Trocar imagem…</button><input type="file" id="fImg" accept="image/*" hidden></label>` : ""}
+    <button id="bHide" type="button" class="${e.hide ? "on" : ""}">${e.hide ? "Imagem escondida" : "Esconder imagem"}</button>
+    ${w.variante ? `<button id="bMostra" type="button" class="${e.mostra ? "on" : ""}">Mostrar este ramo</button>` : ""}
+    ${Object.keys(e).length ? `<button id="bRev" type="button">Reverter widget</button>` : ""}
+  </div>
+  <div id="imgAviso"></div>`;
+  p.querySelectorAll(".rect input").forEach(inp => inp.onchange = () => {
+    const nr = (e.rect || w.rect).slice(); nr[+inp.dataset.i] = parseInt(inp.value, 10) || 0;
+    setEd(w, { rect: nr }); desenha(); painel(); mudancas();
+  });
+  const tx = $("#eTxt");
+  if (tx) tx.oninput = () => {
+    if (tx.value === D.textos[s]) delete st.txt[s]; else st.txt[s] = tx.value;
+    store.set(); desenha(); mudancas();
+  };
+  const fi = $("#fImg");
+  if (fi) {
+    $("#bImg").onclick = () => fi.click();
+    fi.onchange = () => {
+      const f = fi.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          setEd(w, { imgData: rd.result, imgTam: [img.naturalWidth, img.naturalHeight] });
+          desenha(); painel(); mudancas();
+        };
+        img.src = rd.result;
+      };
+      rd.readAsDataURL(f);
+    };
+    if (e.imgTam && im.w && (e.imgTam[0] !== im.w || e.imgTam[1] !== im.h))
+      $("#imgAviso").innerHTML = `<p class="warn">A nova imagem tem ${e.imgTam.join("×")} e a original ${im.w}×${im.h}. Na central o BMP precisa ter o mesmo tamanho.</p>`;
+  }
+  $("#bHide").onclick = () => { setEd(w, { hide: !e.hide }); desenha(); painel(); mudancas(); };
+  if ($("#bMostra")) $("#bMostra").onclick = () => { setEd(w, { mostra: !e.mostra }); desenha(); painel(); };
+  if ($("#bRev")) $("#bRev").onclick = () => { delete st.ed[w.id]; store.set(); desenha(); painel(); mudancas(); };
+}
+
+function listaMudancas() {
+  const out = [];
+  for (const [id, e] of Object.entries(st.ed)) {
+    const [t, w] = achaW(id); if (!w) continue;
+    if (e.imgData) out.push({ tipo: "img", tela: t.nome, alvo: w.nome, de: (tam(w.nome) || []).join("×"), para: (e.imgTam || []).join("×"), id });
+    if (e.hide) out.push({ tipo: "hide", tela: t.nome, alvo: w.nome || w.at, id });
+    if (e.rect) out.push({ tipo: "rect", tela: t.nome, alvo: `${w.tipo} ${w.nome || ""} @${w.at}`, de: w.rect.join(","), para: e.rect.join(","), imediatos: w.rect_src, id });
+  }
+  for (const [s, v] of Object.entries(st.txt)) out.push({ tipo: "texto", alvo: "#" + s, de: D.textos[s], para: v, sid: s });
+  if (st.navMod) out.push({ tipo: "nav", alvo: "campos da navegação", para: NAV_CAMPOS.filter(c => st.nav[c[0]]).map(c => c[2]).join(", ") });
+  return out;
+}
+
+function mudancas() {
+  const l = listaMudancas();
+  $("#nChg").textContent = l.length ? `(${l.length})` : "";
+  $("#chgs").innerHTML = l.length ? l.map((m, i) => `<div class="chg"><button data-i="${i}">desfazer</button>
+    <span class="tag t-${VIAB[m.tipo].r}">${VIAB[m.tipo].r}</span> <b>${esc(m.tela || "")}</b> ${esc(m.alvo)}
+    ${m.de != null || m.para ? `<br><span class="legend">${esc(m.de ?? "")} → ${esc(m.para ?? "")}</span>` : ""}
+    <br><span class="legend">${VIAB[m.tipo].t}</span></div>`).join("")
+    : `<p class="empty">Nada mudado ainda. Cada mudança aparece aqui com o risco de levar para a central.</p>`;
+  $("#chgs").querySelectorAll("button").forEach(b => b.onclick = () => {
+    const m = l[+b.dataset.i];
+    if (m.tipo === "texto") delete st.txt[m.sid];
+    else if (m.tipo === "nav") { st.nav = Object.assign({}, NAV_PADRAO); st.navMod = false; }
+    else { const e = st.ed[m.id]; delete e[{ img: "imgData", hide: "hide", rect: "rect" }[m.tipo]]; if (m.tipo === "img") delete e.imgTam; if (!Object.keys(e).length) delete st.ed[m.id]; }
+    store.set(); desenha(); painel(); mudancas();
+  });
+}
+
+// navegação iGO (mock)
+function desenhaNav(stage) {
+  stage.style.backgroundImage = "none";
+  const on = k => st.nav[k];
+  const val = k => NAV_CAMPOS.find(c => c[0] === k)[3];
+  const barra = ["eta", "tempo", "dist", "alt", "rumo", "temp"].filter(on);
+  stage.innerHTML = `<div class="nav">
+    <svg viewBox="0 0 800 480" width="800" height="480">
+      <path d="M-20 400 L300 300 L520 330 L820 180" stroke="#55665a" stroke-width="34" fill="none"/>
+      <path d="M380 -20 L400 300 L420 520" stroke="#55665a" stroke-width="26" fill="none"/>
+      <path d="M-20 120 L820 60" stroke="#4a5a4e" stroke-width="18" fill="none"/>
+      <path d="M400 500 L400 300 L520 330 L820 180" stroke="#3d8bfd" stroke-width="14" fill="none"/>
+      <polygon points="400,330 386,362 400,354 414,362" fill="#fff"/>
+    </svg>
+    <div class="man"><div class="d">300 m</div><div class="s">Vire à direita · R. Exemplo</div></div>
+    <div class="side">${on("lim") ? `<div class="lim">${val("lim")}</div>` : ""}${on("vel") ? `<div>${val("vel")}</div>` : ""}
+      ${on("hora") ? `<div>${val("hora")}</div>` : ""}${on("midia") ? `<div>${val("midia")}</div>` : ""}${on("gsm") ? `<div>${val("gsm")}</div>` : ""}</div>
+    ${on("rua") ? `<div class="street">${val("rua")}</div>` : ""}
+    <div class="bar">${barra.map(k => `<div><small>${NAV_CAMPOS.find(c => c[0] === k)[1]}</small><b>${val(k)}</b></div>`).join("") || "<div></div>"}</div>
+  </div>`;
+}
+function painelNav(p) {
+  p.innerHTML = `<h2>Campos da navegação</h2>
+    <p class="legend">A skin do iGO lê esses valores pelo .ui. A disposição real é outra; aqui serve para escolher o que mostrar.</p>
+    <div class="navopts">${NAV_CAMPOS.map(c => `<label><input type="checkbox" data-k="${c[0]}" ${st.nav[c[0]] ? "checked" : ""}> ${c[1]} <code>${c[2]}</code></label>`).join("")}</div>`;
+  p.querySelectorAll("input").forEach(i => i.onchange = () => { st.nav[i.dataset.k] = i.checked; st.navMod = true; store.set(); desenha(); mudancas(); });
+}
+
+// cabeçalho
+$("#tema").innerHTML = D.temas.map(t => `<option value="${t}">${{ M1: "Renault (M1)", M0: "Dacia (M0)", M1_INV: "Ilumin. (M1_INV)" }[t] || t}</option>`).join("");
+$("#tema").value = st.tema;
+$("#tema").onchange = () => { st.tema = $("#tema").value; store.set(); desenha(); };
+$("#bInsp").onclick = () => { st.insp = !st.insp; $("#bInsp").classList.toggle("on", st.insp); desenha(); painel(); };
+$("#cVar").onchange = () => { st.vars = $("#cVar").checked; desenha(); };
+$("#bZera").onclick = () => { st.ed = {}; st.txt = {}; st.nav = Object.assign({}, NAV_PADRAO); st.navMod = false; store.set(); desenha(); painel(); mudancas(); };
+$("#bExp").onclick = () => {
+  const l = listaMudancas().map(m => Object.assign({ risco: VIAB[m.tipo].r, como: VIAB[m.tipo].t }, m));
+  const blob = new Blob([JSON.stringify({ versao: "9.1.3", tema: st.tema, mudancas: l }, null, 2)], { type: "application/json" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "mudancas-medianav.json" });
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+const h = location.hash.slice(1);
+if (h && (telaPor[h] || h === NAV)) st.tela = h;
+addEventListener("hashchange", () => { const k = location.hash.slice(1); if (telaPor[k] || k === NAV) ir(k); });
+if (location.search.includes("insp")) { st.insp = true; $("#bInsp").classList.add("on"); }
+lista(); desenha(); painel(); mudancas(); escala();
+</script>
+</body>
+</html>

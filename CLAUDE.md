@@ -14,6 +14,7 @@ Estudo do Media Nav Evolution v1 (LG ULC2, WinCE 6.0, MIPS Au13xx) do Sandero 20
 
 - Pacote 9.1.3 e extração: `C:\Dev\medianav-sandero2016\` (`firmware\9.1.3\upgrade.lgu`, `extract\9.1.3\root\upgrade\`).
 - Carro do Arthur: saiu da 5.2.7.A e está na **9.1.3** oficial desde 27/10/2026 (etapa 1 feita pelo Toolbox). Skin Renault, com GPS. A v1 não volta de versão. Mapa ainda é o de fábrica (2013); mapa vem em pacote separado do Toolbox.
+- Simulador gerado em `C:\Dev\medianav-sandero2016\simulador\`. Tem imagens da LG: nunca copiar para o repo. As constantes de `scripts/appmain_layout.py` valem só para o AppMain do 9.1.3.
 - SHA-256 do `upgrade.lgu` analisado: `090FFAEF5C4047A1BCD6C9A0114C4E8569E63513A11088C532C5B0F609AEB568`.
 
 ## Armadilhas
