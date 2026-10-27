@@ -4,7 +4,7 @@ Só leitura estática: desmonta o código MIPS e acompanha constantes em registr
 e na pilha até as funções que criam botão, imagem e texto. Nada do firmware é executado.
 
 Para cada widget sai: função (= tela), função criadora, id e caminho da imagem,
-retângulo [x, y, w, h], id do último texto pedido antes da chamada e o endereço das
+retângulo [x, y, w, h], id do texto pedido desde o widget anterior e o endereço das
 instruções que carregam x, y, w e h (é ali que um patch de posição mexeria).
 
 Uso: python -I appmain_layout.py <AppMain.exe> <saida.json>
@@ -36,6 +36,7 @@ CREATORS = {
 
 SKIP_WRITE = {"sw", "sh", "sb", "swc1", "sdc1", "beq", "bne", "beqz", "bnez", "jr", "jalr", "b",
               "bgez", "bltz", "blez", "bgtz", "j", "jal", "nop", ".byte", "mtc1", "mthi", "mtlo"}
+BRANCHES = {"b", "j", "beq", "bne", "beqz", "bnez", "bgez", "bltz", "blez", "bgtz"}
 CLOBBER = ("v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9")
 
 
@@ -72,7 +73,7 @@ def extract(path):
 
     # valores: ("c", constante, endereço da instrução) | ("sp", deslocamento, _) | ("hi", lui<<16, _)
     reg, stack = {}, {}
-    st = {"fn": tva, "last_str": None}
+    st = {"fn": tva, "last_str": None, "fresh": False}
     out = []
     calls = collections.Counter()
 
@@ -109,6 +110,7 @@ def extract(path):
         a1, a2, a3 = reg.get("a1"), reg.get("a2"), reg.get("a3")
         if t == STR_FN and a1 and a1[0] == "c":
             st["last_str"] = a1[1]
+            st["fresh"] = True
         if t in CREATORS and a2 and a2[0] == "c" and a3 and a3[0] == "sp":
             r = [stack.get(a3[1] + k) for k in (0, 4, 8, 12)]
             if all(x and x[0] == "c" for x in r):
@@ -117,24 +119,56 @@ def extract(path):
                     calls[CREATORS[t]] += 1
                     out.append({
                         "at": hex(at), "fn": hex(st["fn"]), "tipo": CREATORS[t],
-                        "img": a2[1], "name": img(a2[1]), "rect": rect, "str": st["last_str"],
+                        "img": a2[1], "name": img(a2[1]), "rect": rect, "str": st["last_str"] if st["fresh"] else None,
                         "rect_src": [hex(x[2]) if x[2] else None for x in r],
                     })
+                    st["fresh"] = False
         for k in CLOBBER:
             reg.pop(k, None)
 
+    # Ramos: a leitura é linear, então o código depois de um 'b' incondicional herdaria o
+    # estado do bloco anterior. Guardamos o estado de cada desvio no alvo e, quando a linha
+    # reta chega num alvo vindo de código morto, retomamos dele (interseção dos estados).
+    snaps = {}
+
+    def snapshot(alvo):
+        snaps.setdefault(alvo, []).append((dict(reg), dict(stack), st["last_str"], st["fresh"]))
+
+    def restore(alvo):
+        lst = snaps[alvo]
+        r0, s0, l0, f0 = lst[0]
+        reg.clear()
+        reg.update({k: v for k, v in r0.items() if all(o[0].get(k) == v for o in lst[1:])})
+        stack.clear()
+        stack.update({k: v for k, v in s0.items() if all(o[1].get(k) == v for o in lst[1:])})
+        st["last_str"] = l0 if all(o[2] == l0 for o in lst[1:]) else None
+        st["fresh"] = f0 and all(o[3] for o in lst[1:])
+
     pending = None      # alvo do jal esperando o delay slot
+    branch = None       # (alvo, incondicional) esperando o delay slot
+    dead = False        # depois de 'b' + delay slot: a próxima instrução só é alcançada por salto
     end_after = False   # 'jr $ra' visto: a função acaba depois do delay slot
     for ins in md.disasm(code, tva):
         try:
+            if dead:
+                dead = False
+                if ins.address in snaps:
+                    restore(ins.address)
             if pending is not None:           # delay slot roda antes da chamada
                 step(ins)
                 do_call(pending, ins.address - 4)
                 pending = None
+            elif branch is not None:
+                step(ins)
+                snapshot(branch[0])
+                dead = branch[1]
+                branch = None
             elif end_after:
                 step(ins)
             elif ins.mnemonic == "jal":
                 pending = ins.operands[0].imm
+            elif ins.mnemonic in BRANCHES and ins.operands and ins.operands[-1].type == mips.MIPS_OP_IMM:
+                branch = (ins.operands[-1].imm, ins.mnemonic in ("b", "j"))
             elif ins.mnemonic == "jr" and ins.op_str == "$ra":
                 end_after = True
                 continue
@@ -143,7 +177,9 @@ def extract(path):
             if end_after:
                 reg.clear()
                 stack.clear()
+                snaps.clear()
                 st["last_str"] = None
+                st["fresh"] = False
                 st["fn"] = ins.address + 4
                 end_after = False
         except Exception:

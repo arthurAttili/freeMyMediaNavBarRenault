@@ -25,6 +25,8 @@ import langdll_strings   # noqa: E402
 THEMES = ["M1", "M0", "M1_INV"]          # M1 = Renault (preto), M0 = Dacia (azul), M1_INV = claro
 BG = {"home": "home_bg", "fm radio": "fmradio_bg", "media": "media_bg", "phone": "phone_bg",
       "setting": "setting_bg", "eco": "eco_bg"}
+BOTOES = {"botao", "botao2", "softkey"}
+BARRA = "0x14c20"                        # barra de status (relógio, temperatura, celular), desenhada por cima das telas
 GRUPO = {"home": "Início", "fm radio": "Rádio", "media": "Mídia", "phone": "Telefone",
          "setting": "Configurações", "eco": "Driving Eco", "popup": "Pop-ups"}
 
@@ -39,6 +41,7 @@ NOMES = {
     "0xbf9a0": "Relógio / unidades", "0xc5ba8": "Ajuste de hora", "0xaf074": "Bluetooth",
     "0xc145c": "Detecção de obstáculo", "0x101bcc": "Driving Eco 1", "0x105814": "Driving Eco 2",
     "0xfe6c8": "Driving Eco 3", "0xaa7c8": "Ligar motor à distância", "0x66444": "Smartphone",
+    "0x14c20": "Barra de status", "0x206c8": "Info 4x4",
 }
 
 
@@ -118,26 +121,29 @@ def main(up, out):
         pasta = pastas.most_common(1)[0][0] if pastas else "etc"
         prim = [textos.get(w["str"]) for w in items if w["str"] in textos]
         nome = NOMES.get(fn) or (prim[0] if prim else fn)
-        lista, prev_str = [], None
+        lista = []
         for i, w in enumerate(items):
             x, y, ww, hh = w["rect"]
             # Ramo alternativo: mesma imagem e mesmo tipo já criados perto daqui. O AppMain monta
             # layouts diferentes por tema (Dacia x Renault); a página escolhe o ramo que encaixa no sprite.
+            # Botão de imagem diferente no mesmo retângulo também é ramo: o tile de baixo à
+            # esquerda do início é Mapa, Driving Eco, Info 4x4 ou Veículo conforme o carro.
             raiz = next((lista[j]["var_de"] or lista[j]["id"] for j, o in enumerate(items[:i])
-                         if o["img"] == w["img"] and o["tipo"] == w["tipo"] and
-                         (abs(o["rect"][0] - x) < 60 and abs(o["rect"][1] - y) < 60 if w["img"] >= 0
-                          else o["rect"] == w["rect"])), None)
+                         if o["tipo"] == w["tipo"] and
+                         ((o["img"] == w["img"] and
+                           (abs(o["rect"][0] - x) < 60 and abs(o["rect"][1] - y) < 60 if w["img"] >= 0
+                            else o["rect"] == w["rect"])) or
+                          (w["tipo"] in BOTOES and o["rect"] == w["rect"]))), None)
             lista.append({
                 "id": fn + "/" + w["at"], "at": w["at"], "tipo": w["tipo"], "img": w["img"], "nome": w["name"],
-                "rect": w["rect"], "str": w["str"] if w["str"] != prev_str else None,
+                "rect": w["rect"], "str": w["str"],
                 "var_de": raiz, "rect_src": w["rect_src"],
             })
-            prev_str = w["str"]
         telas.append({"fn": fn, "nome": nome, "pasta": pasta, "grupo": GRUPO.get(pasta, "Outras"),
                       "fundo": BG.get(pasta, "home_bg" if pasta == "popup" else "etc_bg"), "widgets": lista, "conferida": fn in NOMES})
 
     usados = {w["str"] for w in widgets if w["str"] is not None}
-    dados = {"temas": THEMES, "telas": telas, "imgs": imgs, "fundos": fundos,
+    dados = {"temas": THEMES, "telas": telas, "barra": BARRA, "imgs": imgs, "fundos": fundos,
              "textos": {str(k): v for k, v in textos.items()}, "textos_usados": sorted(usados)}
     with open(os.path.join(out, "data.js"), "w", encoding="utf-8") as f:
         f.write("window.SIM = ")

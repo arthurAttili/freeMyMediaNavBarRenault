@@ -16,7 +16,7 @@ Depois é abrir `C:\Dev\medianav-sandero2016\simulador\index.html` no navegador.
 
 | Script | O que faz |
 |---|---|
-| `scripts/appmain_layout.py` | Layout do AppMain: 1.950 widgets em 110 funções, com imagem, retângulo, texto e o endereço de cada imediato |
+| `scripts/appmain_layout.py` | Layout do AppMain: 2.028 widgets em 110 funções, com imagem, retângulo, texto e o endereço de cada imediato |
 | `scripts/langdll_strings.py` | Os 392 textos do `LangDllPTBR.dll` (ids 1001 a 3313) |
 | `scripts/simulador_gera.py` | Junta os dois, converte os BMPs usados em PNG e monta a pasta |
 
@@ -26,7 +26,7 @@ São duas camadas, com donos diferentes.
 
 **AppMain** (início, rádio, mídia, telefone, configurações, Driving Eco). Não usa QtGui; desenha tudo com rotinas próprias.
 
-- Imagens: `Storage Card\System\Img\<tema>\<tela>\*.bmp`. São BMP de 8 bits com paleta. Amarelo puro (255,255,0) é transparente. Os botões são sprites com os estados lado a lado: 178 das 280 imagens usadas têm 4 estados. O primeiro é o normal. A ordem dos outros três é suposição (pressionado, desabilitado, foco).
+- Imagens: `Storage Card\System\Img\<tema>\<tela>\*.bmp`. São BMP de 8 bits com paleta. Amarelo puro (255,255,0) é transparente. Os botões são sprites com os estados lado a lado: 178 das 280 imagens usadas têm 4 estados. O primeiro é o normal (conferido na foto da tela inicial). A ordem dos outros três é suposição (pressionado, desabilitado, foco).
 - Temas: `M1` é o Renault preto do Sandero, `M1_INV` é o claro, `M0` é o Dacia azul. O `M1_INV` tem os 518 BMPs com o mesmo tamanho do `M1`. O `M0` difere em 4, e para esses o AppMain cria widgets com outro retângulo (o "Escuro" do Dacia tem 144 px, o do Renault 104 px).
 - Posições: compiladas no `AppMain.exe`. Cada x, y, largura e altura é uma instrução `addiu reg, zero, N` antes da chamada. O simulador mostra o endereço das quatro.
 - Textos: tabela de recursos do `data\LangDllPTBR.dll`. Um id serve várias telas: mudar o 1411 ("Áudio") muda todos os softkeys de áudio.
@@ -37,12 +37,15 @@ São duas camadas, com donos diferentes.
 
 - Lista as 110 telas por grupo. 29 têm nome conferido à mão; as outras levam o primeiro texto e o endereço.
 - Troca entre os três temas. Escolhe sozinho o ramo do layout que encaixa no sprite do tema.
+- Seletor "Carro" para o tile de baixo à esquerda do início. O AppMain cria cinco versões dele (Mapa, Driving Eco², Driving Eco, Info 4x4, Veículo) e mostra uma conforme as flags de configuração do carro. O padrão é Driving Eco², que é o do Sandero do Arthur.
+- Barra de status por cima das telas, tirada da rotina `0x14c20`: relógio com a hora do PC, desenhado com os quadros do sprite de dígitos. Temperatura externa e sinal/bateria do celular ligam no cabeçalho; vêm desligados porque não aparecem na foto.
+- O botão "Ajust. Hora" fica escondido como no carro. O AppMain cria e depois esconde conforme a configuração; "ramos alternativos" mostra.
 - Modo uso: os tiles da tela inicial, os softkeys e o botão de casa navegam. O estado pressionado aparece no toque.
 - Modo inspeção: clique mostra imagem, tamanho, estados, texto e endereços. Dá para arrastar, digitar x/y/w/h, trocar a imagem por um arquivo do PC, esconder e editar o texto.
 - Cada mudança entra numa lista com o risco e o caminho até a central. "Exportar mudanças" baixa um JSON.
 - Uma tela de navegação feita à mão mostra os campos de informação que dá para ligar no iGO.
 
-**Limites conhecidos.** Frequência, faixa e nome da rádio são preenchidos pelo AppMain em tempo real. No simulador são exemplos. A fonte, o tamanho e a cor do texto são aproximados. A barra de status (relógio, temperatura) vem de outra rotina que o extrator ainda não pega. Telas com lista mostram itens de páginas diferentes como ramos alternativos, escondidos por padrão.
+**Limites conhecidos.** Frequência, faixa e nome da rádio são preenchidos pelo AppMain em tempo real. No simulador são exemplos. A fonte, o tamanho e a cor do texto são aproximados. A barra de status mostra só a hora em 24 h; o "am", o ícone do aha e o de acerto de hora ficam escondidos. Telas com lista mostram itens de páginas diferentes como ramos alternativos, escondidos por padrão.
 
 ## Mudanças, viabilidade e risco
 
@@ -69,11 +72,11 @@ Você não listou incômodos, então tirei estas das telas. Estão em ordem de v
 
 1. **Temperatura externa e música tocando na tela do mapa.** O iGO já recebe os dois do carro (`%other.lg_renault.temperature_value` e `media_string`). Hoje é preciso sair da navegação para ver a faixa. Mudança no `.ui`.
 2. **Escolher os campos da barra de baixo da navegação**: hora de chegada, tempo e distância restantes, rumo. A tela de navegação do simulador tem a lista para marcar. Mesma edição.
-3. **"Mapa" e "GPS" lado a lado na tela inicial.** Pelos nomes das imagens (`map` e `navi`), um abre o mapa e o outro o menu de navegação, mas o rótulo não conta isso. Trocar "GPS" por "Destino" resolve com um patch de texto do mesmo tamanho. Falta confirmar no carro o que cada um abre.
+3. **O tile "GPS" da tela inicial.** No Sandero ele divide a fileira com o Driving Eco², e o rótulo fala do sinal, não do que abre (a navegação). "Navegar" ou "Mapa" diria o destino do toque. Patch de texto do mesmo tamanho ou menor. O id 1005 também é usado nas funções `0x26640` e `0xa9030`, que precisam ser vistas no simulador antes da troca.
 4. **Abreviações**: "Relat. Viagem", "Ajust. Hora", "Inf. programa", "Ilumin.", "Autom." e "Predefs". Onde couber, a palavra inteira ("Viagem", "Hora", "Favoritas"). Cada uma precisa ser medida no simulador antes.
 5. **Visual claro de dia.** Testar o Ilumin. no carro com sol. Se o brilho resolver, o resto do item 6 fica opcional.
 6. **Ícones com mais contraste** no `M1`, se o teste do item 5 mostrar que o preto com ciano some ao sol. É só imagem.
 
 ## Para calibrar
 
-Fotos das telas reais (início, rádio FM, mídia USB, telefone, configurações e navegação) servem para acertar fonte, cor e posição dos textos, a ordem dos estados dos sprites e onde ficam o relógio e a temperatura. Com elas, o simulador passa de aproximado para fiel.
+A tela inicial está calibrada pela foto do carro: tile Driving Eco², sem "Ajust. Hora", lua sem rótulo, linha recortada do topo e relógio na direita. Faltam fotos de rádio FM, mídia USB, telefone, configurações e navegação para acertar fonte, cor e posição dos textos nessas telas.
