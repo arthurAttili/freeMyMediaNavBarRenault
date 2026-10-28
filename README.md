@@ -36,7 +36,8 @@ python -I scripts\nngcfg.py "<saida>\root\upgrade\Storage Card4\NNG"
 python -I scripts\zipstruct.py <saida>\_decoded.zip
 python -I scripts\nkrom.py "<saida>\root\upgrade\Storage Card\NK.bin"
 python -I scripts\lgu_pack.py <caminho>\upgrade.lgu <outra_pasta>\upgrade.lgu lite\mudancas.txt
-python -I scripts\simulador_gera.py <saida>\root\upgrade <pasta_do_simulador>
+python -I scripts\simulador_gera.py <saida>\root\upgrade <pasta_do_simulador> [<pasta_Img_modificada>]
+python -I scripts\fundo_texto.py <fundo.bmp> <outra_pasta>\fundo.bmp "<texto>" <y_centro> <tamanho_px>
 ```
 
 O `simulador_gera.py` monta uma página local com as telas do AppMain para testar mudanças visuais no PC. Precisa de `pefile`, `capstone` e `pillow`. A pasta gerada tem imagens da LG/Renault e fica fora do repo. Ver `SIMULADOR.md`.

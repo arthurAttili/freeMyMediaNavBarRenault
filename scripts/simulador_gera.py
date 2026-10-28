@@ -7,7 +7,10 @@ Nada do firmware é executado.
 
 A pasta de saída tem imagens da LG/Renault: deixe-a FORA do repositório.
 
-Uso: python -I simulador_gera.py <extract/.../root/upgrade> <pasta de saída>
+Uso: python -I simulador_gera.py <extract/.../root/upgrade> <pasta de saída> [<pasta Img com fundos modificados>]
+
+A terceira pasta, se vier, tem a mesma estrutura de Img (<tema>/common/<fundo>.bmp). A página
+ganha a opção "fundos modificados" para comparar com o original.
 Requer: pefile, capstone, pillow.
 """
 import collections
@@ -44,6 +47,29 @@ NOMES = {
     "0x14c20": "Barra de status", "0x206c8": "Info 4x4",
 }
 
+# Funções que carregam o índice de common\home_bg.bmp / common\etc_bg.bmp no AppMain 9.1.3.
+# O fundo não passa pelas criadoras de widget, então a pasta das imagens chutaria errado.
+FUNDO_FN = {fn: "home_bg" for fn in ("0x206c8", "0x226a4", "0x27adc", "0x28ee4", "0x3a744", "0x5b584",
+                                     "0x605b4", "0x66444", "0xc4fb8")}
+FUNDO_FN["0x25b60"] = "etc_bg"     # aviso "Atenção!" da partida
+
+# Tela de descanso (rádio desligado). Quem desenha é o MicomManager.exe, não o AppMain:
+# limpa 800x480, põe common\etc_bg.bmp e o relógio grande (VA 0x1e000-0x1e6b4 no 9.1.3).
+# Modo 24 h (byte 0xb02 da config != 0): dígitos de 60x85 em y 188, dois-pontos de 25 px em x 388.
+# No modo 12 h os dígitos vão para x 224/292/393/461, o dois-pontos para 360 e am/pm para 533.
+DESCANSO = {
+    "fn": "micom:descanso", "nome": "Descanso (rádio desligado)", "pasta": "etc", "grupo": "Início",
+    "fundo": "etc_bg", "origem": "MicomManager", "sem_barra": True, "conferida": True,
+    "widgets": [{"id": "micom:descanso/" + at, "at": at, "tipo": "imagem", "img": -1, "nome": nome,
+                 "rect": rect, "str": None, "var_de": None, "rect_src": [at, None, None, None], "relogio": k}
+                for at, nome, rect, k in (
+                    ("0x1e38c", r"etc\etc_clock_font.bmp", [252, 188, 60, 85], 0),
+                    ("0x1e3d8", r"etc\etc_clock_font.bmp", [320, 188, 60, 85], 1),
+                    ("0x1e5f8", r"etc\etc_clock_font_colon.bmp", [388, 188, 25, 85], None),
+                    ("0x1e428", r"etc\etc_clock_font.bmp", [421, 188, 60, 85], 2),
+                    ("0x1e474", r"etc\etc_clock_font.bmp", [489, 188, 60, 85], 3))],
+}
+
 
 def find_ci(root, rel):
     """Resolve caminho relativo sem diferenciar maiúsculas (a central é Windows CE)."""
@@ -77,7 +103,7 @@ def slug(rel):
     return rel.replace("..\\COMMON\\", "COMMON\\").replace("\\", "/").replace(" ", "_").lower()[:-4] + ".png"
 
 
-def main(up, out):
+def main(up, out, mod=None):
     sysdir = find_ci(up, "Storage Card/System/AppMain.exe")
     if not sysdir:
         sys.exit("AppMain.exe não encontrado em " + up)
@@ -89,7 +115,7 @@ def main(up, out):
 
     os.makedirs(out, exist_ok=True)
     imgs = {}          # caminho original -> {arq: {tema: png}, tam: {tema: [w, h]}}
-    for name in sorted({w["name"] for w in widgets if w["name"]}):
+    for name in sorted({w["name"] for w in widgets if w["name"]} | {w["nome"] for w in DESCANSO["widgets"]}):
         info = {"arq": {}, "tam": {}}
         for t in THEMES:
             src = find_ci(os.path.join(imgroot, t), name)
@@ -110,6 +136,14 @@ def main(up, out):
                 if not os.path.exists(os.path.join(out, "img", rel)):
                     to_png(src, os.path.join(out, "img", rel))
                 fundos.setdefault(t, {})[v] = "img/" + rel
+    fundos_mod = {}
+    for t in THEMES if mod else ():
+        for v in sorted(set(BG.values()) | {"etc_bg"}):
+            src = find_ci(os.path.join(mod, t), "common/" + v + ".bmp")
+            if src:
+                rel = "mod/" + t + "/common/" + v + ".png"
+                to_png(src, os.path.join(out, "img", rel))      # sempre refaz: a pasta muda entre testes
+                fundos_mod.setdefault(t, {})[v] = "img/" + rel
 
     by_fn = collections.OrderedDict()
     for w in sorted(widgets, key=lambda w: int(w["fn"], 16)):
@@ -140,10 +174,12 @@ def main(up, out):
                 "var_de": raiz, "rect_src": w["rect_src"],
             })
         telas.append({"fn": fn, "nome": nome, "pasta": pasta, "grupo": GRUPO.get(pasta, "Outras"),
-                      "fundo": BG.get(pasta, "home_bg" if pasta == "popup" else "etc_bg"), "widgets": lista, "conferida": fn in NOMES})
+                      "fundo": FUNDO_FN.get(fn) or BG.get(pasta, "home_bg" if pasta == "popup" else "etc_bg"),
+                      "widgets": lista, "conferida": fn in NOMES})
+    telas.insert(0, DESCANSO)
 
     usados = {w["str"] for w in widgets if w["str"] is not None}
-    dados = {"temas": THEMES, "telas": telas, "barra": BARRA, "imgs": imgs, "fundos": fundos,
+    dados = {"temas": THEMES, "telas": telas, "barra": BARRA, "imgs": imgs, "fundos": fundos, "fundos_mod": fundos_mod or None,
              "textos": {str(k): v for k, v in textos.items()}, "textos_usados": sorted(usados)}
     with open(os.path.join(out, "data.js"), "w", encoding="utf-8") as f:
         f.write("window.SIM = ")
@@ -155,4 +191,4 @@ def main(up, out):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)

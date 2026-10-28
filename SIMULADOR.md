@@ -12,6 +12,8 @@ Precisa de um Python com `pefile`, `capstone` e `pillow` (um venv basta).
 python -I scripts/simulador_gera.py "C:\Dev\medianav-sandero2016\extract\9.1.3\root\upgrade" "C:\Dev\medianav-sandero2016\simulador"
 ```
 
+Um terceiro argumento opcional aponta uma pasta com a mesma estrutura de `Img` (`<tema>\common\<fundo>.bmp`). A página ganha a opção "fundos modificados" para comparar com o original.
+
 Depois é abrir `C:\Dev\medianav-sandero2016\simulador\index.html` no navegador. A pasta tem 13 MB de imagens da LG/Renault e fica **fora do repo**. No git vão só os scripts e o template `simulador/index.html`.
 
 | Script | O que faz |
@@ -19,6 +21,7 @@ Depois é abrir `C:\Dev\medianav-sandero2016\simulador\index.html` no navegador.
 | `scripts/appmain_layout.py` | Layout do AppMain: 2.028 widgets em 110 funções, com imagem, retângulo, texto e o endereço de cada imediato |
 | `scripts/langdll_strings.py` | Os 392 textos do `LangDllPTBR.dll` (ids 1001 a 3313) |
 | `scripts/simulador_gera.py` | Junta os dois, converte os BMPs usados em PNG e monta a pasta |
+| `scripts/fundo_texto.py` | Escreve uma linha de texto num BMP de fundo. Sai com o mesmo tamanho em bytes, o mesmo cabeçalho e o mesmo número de cores; as cores do texto vão para entradas da paleta que nenhum pixel usa |
 
 ## Onde a interface mora
 
@@ -31,11 +34,13 @@ São duas camadas, com donos diferentes.
 - Posições: compiladas no `AppMain.exe`. Cada x, y, largura e altura é uma instrução `addiu reg, zero, N` antes da chamada. O simulador mostra o endereço das quatro.
 - Textos: tabela de recursos do `data\LangDllPTBR.dll`. Um id serve várias telas: mudar o 1411 ("Áudio") muda todos os softkeys de áudio.
 
+**MicomManager** (tela de descanso, com o rádio desligado). Limpa a tela, põe `common\etc_bg.bmp` e desenha o relógio grande com `etc\etc_clock_font.bmp` (10 dígitos de 60×85) e `etc_clock_font_colon.bmp`. Rotina em VA `0x1e000`–`0x1e6b4` do 9.1.3. Em 24 h os dígitos ficam em x 252, 320, 421 e 489, y 188, e os dois-pontos em x 388. Em 12 h vão para 224, 292, 393 e 461, os dois-pontos para 360 e o am/pm para 533. As posições estão no código, como no AppMain. A fonte de texto pedida pelos dois executáveis é Tahoma.
+
 **Navegação iGO**: zips em `Storage Card4\NNG\ux`, sem senha. Layout em `.ui`, estilo em `.css`, cores em `ui_core/scheme/*/color.ini`. A lógica está em `.lua` compilado. A skin já lê velocidade, altitude, rumo, temperatura externa, música tocando, sinal do celular, hora de chegada, tempo e distância restantes e rua atual.
 
 ## O que o simulador faz
 
-- Lista as 110 telas por grupo. 29 têm nome conferido à mão; as outras levam o primeiro texto e o endereço.
+- Lista as 110 telas do AppMain por grupo, mais a de descanso do MicomManager (em Início, com o relógio na hora do PC). 29 têm nome conferido à mão; as outras levam o primeiro texto e o endereço.
 - Troca entre os três temas. Escolhe sozinho o ramo do layout que encaixa no sprite do tema.
 - Seletor "Carro" para o tile de baixo à esquerda do início. O AppMain cria cinco versões dele (Mapa, Driving Eco², Driving Eco, Info 4x4, Veículo) e mostra uma conforme as flags de configuração do carro. O padrão é Driving Eco², que é o do Sandero do Arthur.
 - Barra de status por cima das telas, tirada da rotina `0x14c20`: relógio com a hora do PC, desenhado com os quadros do sprite de dígitos. Temperatura externa e sinal/bateria do celular ligam no cabeçalho; vêm desligados porque não aparecem na foto.
@@ -43,6 +48,7 @@ São duas camadas, com donos diferentes.
 - Modo uso: os tiles da tela inicial, os softkeys e o botão de casa navegam. O estado pressionado aparece no toque.
 - Modo inspeção: clique mostra imagem, tamanho, estados, texto e endereços. Dá para arrastar, digitar x/y/w/h, trocar a imagem por um arquivo do PC, esconder e editar o texto.
 - Cada mudança entra numa lista com o risco e o caminho até a central. "Exportar mudanças" baixa um JSON.
+- O fundo de cada tela segue o que a função carrega no AppMain quando dá para ver (`home_bg` em 9 telas, `etc_bg` no aviso de partida). Nas outras, vai pela pasta das imagens.
 - Uma tela de navegação feita à mão mostra os campos de informação que dá para ligar no iGO.
 
 **Limites conhecidos.** Frequência, faixa e nome da rádio são preenchidos pelo AppMain em tempo real. No simulador são exemplos. A fonte, o tamanho e a cor do texto são aproximados. A barra de status mostra só a hora em 24 h; o "am", o ícone do aha e o de acerto de hora ficam escondidos. Telas com lista mostram itens de páginas diferentes como ramos alternativos, escondidos por padrão.
@@ -55,6 +61,7 @@ Toda mudança chega à central dentro de um `upgrade.lgu` montado pelo `scripts/
 |---|---|---|---|---|
 | Usar o visual claro | Configurações > Tela > Plano de fundo: Ilumin. | sim | nenhum | Já existe na central. Teste no carro antes de qualquer patch |
 | Trocar ícones e fundos | BMP em `Img\M1` | sim | baixo | Mesmo tamanho, 8 bits com paleta, amarelo como transparência |
+| Texto fixo num fundo ("Veículo rastreado por satélite") | `common\home_bg.bmp` e `common\etc_bg.bmp` em `M1` e `M1_INV` | sim | baixo | Feito com `fundo_texto.py`, sem tocar em código. Cada fundo é compartilhado: o `etc_bg` também é o do aviso "Atenção!" da partida (o texto cabe entre o aviso e o botão Concordo). O `home_bg` aparece também em Versão do sistema, na ajuda do Smartphone e no Info 4x4 (que o Sandero não mostra), ao lado do botão voltar. Telefone e áudio BT cobrem a faixa com softkeys. Três funções que carregam o `home_bg` (`0x1f118`, `0xbecc8`, `0x127284`) não têm widget extraído e ficam sem conferir |
 | Esconder um elemento | BMP todo amarelo | sim | baixo | Some da tela, mas a área continua respondendo ao toque |
 | Recolorir um tema inteiro | Os BMPs do `M1` | sim | baixo | Trabalho de imagem, sem código. A cor do texto vem do código e fica igual |
 | Encurtar ou corrigir textos | `LangDllPTBR.dll` | sim | médio | Igual ou menor reescreve no lugar. Maior exige remontar a seção de recursos e pode ser cortado na tela |

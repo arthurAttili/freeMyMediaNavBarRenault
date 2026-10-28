@@ -115,6 +115,7 @@ textarea { width: 100%; min-height: 48px; background: var(--panel); border: 1px 
     <label><input type="checkbox" id="cTemp"> temp. externa</label>
     <label><input type="checkbox" id="cCel"> celular conectado</label>
     <label><input type="checkbox" id="cVar"> ramos alternativos</label>
+    <label id="lMod" hidden title="Fundos da pasta passada ao simulador_gera.py (terceiro argumento)"><input type="checkbox" id="cMod"> fundos modificados</label>
     <span class="sp"></span>
     <button id="bExp">Exportar mudanças</button>
     <button id="bZera">Desfazer tudo</button>
@@ -187,11 +188,11 @@ const SLOTS = [[1008, "Driving Eco² (seu carro)"], [1004, "Mapa"], [1011, "Driv
 const OCULTOS = { "0x226a4/0x2318c": "Ajust. Hora", "0x226a4/0x231d4": "Ajust. Hora" };
 const NAV_PADRAO = { vel: 1, eta: 1, dist: 1, rua: 1 };   // o que a skin Renault mostra hoje (aprox.)
 
-const st = { tema: "M1", tela: "0x226a4", insp: false, sel: null, vars: false, slot: 1008, temp: false, cel: false,
+const st = { tema: "M1", tela: "0x226a4", insp: false, sel: null, vars: false, slot: 1008, temp: false, cel: false, mod: false,
              ed: {}, txt: {}, nav: Object.assign({}, NAV_PADRAO), navMod: false };
 const store = {
   get() { try { return JSON.parse(localStorage.getItem("mnsim") || "null"); } catch (e) { return null; } },
-  set() { try { localStorage.setItem("mnsim", JSON.stringify({ ed: st.ed, txt: st.txt, nav: st.nav, navMod: st.navMod, tema: st.tema, slot: st.slot, temp: st.temp, cel: st.cel })); } catch (e) {} },
+  set() { try { localStorage.setItem("mnsim", JSON.stringify({ ed: st.ed, txt: st.txt, nav: st.nav, navMod: st.navMod, tema: st.tema, slot: st.slot, temp: st.temp, cel: st.cel, mod: st.mod })); } catch (e) {} },
 };
 const salvo = store.get();
 if (salvo) Object.assign(st, salvo);
@@ -252,12 +253,13 @@ function desenha() {
   if (st.tela === NAV) { desenhaNav(stage); legenda(); return; }
   const t = telaPor[st.tela];
   if (!t) return;
-  const f = (D.fundos[st.tema] || D.fundos.M1 || {})[t.fundo];
+  const mod = st.mod && D.fundos_mod ? D.fundos_mod[st.tema] || {} : {};
+  const f = mod[t.fundo] || (D.fundos[st.tema] || D.fundos.M1 || {})[t.fundo];
   stage.style.backgroundImage = f ? `url("${f}")` : "none";
   if (t.pasta === "popup") stage.appendChild(Object.assign(document.createElement("div"), { className: "popdim" }));
   poeWidgets(stage, t);
   const b = telaPor[D.barra];
-  if (b && t !== b && t.pasta !== "popup") poeWidgets(stage, b);
+  if (b && t !== b && t.pasta !== "popup" && !t.sem_barra) poeWidgets(stage, b);
   barra();
   legenda();
 }
@@ -293,6 +295,7 @@ function poeWidgets(stage, t) {
     }
     d._w = w;
     if (t.fn === D.barra) d.dataset.bar = w.rect[0];
+    if (w.relogio != null) d.dataset.rel = w.relogio;
     stage.appendChild(d);
   }
 }
@@ -311,6 +314,10 @@ function barra() {
     d.style.visibility = f == null && !ed(w).mostra ? "hidden" : "";
     if (f != null) d.style.backgroundPosition = `-${f * w.rect[2]}px 0`;
   });
+  // relógio grande da tela de descanso (MicomManager): casas 0 a 3 = HHMM
+  document.querySelectorAll("#stage .w[data-rel]").forEach(d => {
+    d.style.backgroundPosition = `-${+(hh + mm)[d.dataset.rel] * d._w.rect[2]}px 0`;
+  });
 }
 setInterval(barra, 1000);
 
@@ -318,7 +325,7 @@ function legenda() {
   if (st.tela === NAV) { $("#legenda").textContent = "Mock da navegação: os campos à direita são os que a skin do iGO consegue mostrar."; return; }
   const t = telaPor[st.tela];
   const n = t.widgets.length, v = t.widgets.filter(w => w.variante).length;
-  $("#legenda").textContent = `${t.nome} · função ${t.fn} do AppMain · ${n} widgets (${v} de ramo alternativo) · fundo ${t.fundo}`;
+  $("#legenda").textContent = `${t.nome} · função ${t.fn} do ${t.origem || "AppMain"} · ${n} widgets (${v} de ramo alternativo) · fundo ${t.fundo}`;
 }
 
 // interação no palco
@@ -337,7 +344,7 @@ $("#stage").addEventListener("pointerdown", e => {
     painel();
     return;
   }
-  if (estados(w) > 1) d.style.backgroundPosition = `-${w.rect[2]}px 0`;   // estado 1 = pressionado
+  if (estados(w) > 1 && !d.dataset.rel) d.style.backgroundPosition = `-${w.rect[2]}px 0`;   // estado 1 = pressionado
   d.setPointerCapture(e.pointerId);
   d.onpointerup = () => {
     d.style.backgroundPosition = "0 0"; d.onpointerup = null;
@@ -492,6 +499,8 @@ $("#slot").onchange = () => { st.slot = +$("#slot").value; store.set(); desenha(
 $("#cTemp").checked = st.temp; $("#cCel").checked = st.cel;
 $("#cTemp").onchange = () => { st.temp = $("#cTemp").checked; store.set(); barra(); };
 $("#cCel").onchange = () => { st.cel = $("#cCel").checked; store.set(); barra(); };
+$("#lMod").hidden = !D.fundos_mod; $("#cMod").checked = st.mod;
+$("#cMod").onchange = () => { st.mod = $("#cMod").checked; store.set(); desenha(); };
 $("#bZera").onclick = () => { st.ed = {}; st.txt = {}; st.nav = Object.assign({}, NAV_PADRAO); st.navMod = false; store.set(); desenha(); painel(); mudancas(); };
 $("#bExp").onclick = () => {
   const l = listaMudancas().map(m => Object.assign({ risco: VIAB[m.tipo].r, como: VIAB[m.tipo].t }, m));
